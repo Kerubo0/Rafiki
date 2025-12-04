@@ -13,7 +13,8 @@ const defaultSettings = {
   largeText: false,
   reducedMotion: false,
   screenReaderMode: false,
-  speechRate: 80, // Reduced from 150 to 80 for slower speech
+  speechRate: 80, // 0.8x speed (80/100) - 20% slower than normal
+  speechPitch: 1.0,
   voiceEnabled: true,
   autoSpeak: true,
   language: 'en', // 'en' for English, 'sw' for Kiswahili
@@ -85,7 +86,7 @@ export function AccessibilityProvider({ children }) {
     }
   }, []);
 
-  // Speak text using Web Speech API
+  // Speak text using Web Speech API with natural pacing
   const speak = useCallback((text, options = {}) => {
     if (!settings.voiceEnabled || !window.speechSynthesis) return;
 
@@ -93,16 +94,32 @@ export function AccessibilityProvider({ children }) {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = (options.rate || settings.speechRate) / 100; // Lower rate = slower speech
-    utterance.pitch = options.pitch || 1;
+    
+    // Speech rate: 0.8 = 20% slower than normal (1.0)
+    // Using settings.speechRate / 100 so 80 becomes 0.8
+    utterance.rate = (options.rate || settings.speechRate) / 100;
+    
+    // Natural pitch
+    utterance.pitch = options.pitch || settings.speechPitch || 1.0;
     utterance.volume = options.volume || 1;
     
     // Set language based on user preference
     const langCode = options.lang || (settings.language === 'sw' ? 'sw-KE' : 'en-KE');
     utterance.lang = langCode;
+    
+    // Try to select a natural-sounding voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.lang.startsWith(settings.language === 'sw' ? 'sw' : 'en') && 
+      (voice.name.includes('Neural') || voice.name.includes('Natural') || voice.name.includes('Google'))
+    ) || voices.find(voice => voice.lang.startsWith(settings.language === 'sw' ? 'sw' : 'en'));
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
 
     window.speechSynthesis.speak(utterance);
-  }, [settings.voiceEnabled, settings.speechRate, settings.language]);
+  }, [settings.voiceEnabled, settings.speechRate, settings.speechPitch, settings.language]);
 
   // Stop speaking
   const stopSpeaking = useCallback(() => {
