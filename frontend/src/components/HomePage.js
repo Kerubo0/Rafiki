@@ -3,7 +3,7 @@
  * Main landing page with voice assistant and service overview
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { useSession } from '../context/SessionContext';
@@ -15,42 +15,85 @@ import toast from 'react-hot-toast';
 
 function HomePage() {
   const navigate = useNavigate();
-  const { speak, settings, announce } = useAccessibility();
+  const { speak, settings, updateSetting } = useAccessibility();
   const { isLoading: sessionLoading } = useSession();
   const [services, setServices] = useState([]);
   const [welcomeMessage, setWelcomeMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [hasGreeted, setHasGreeted] = useState(false);
+  const [showLanguageChoice, setShowLanguageChoice] = useState(true);
 
-  // Load services and welcome message on mount
+  // Wanjiku's bilingual greeting
+  const wanjikuGreeting = 
+    "Hello! My name is Wanjiku, your Government assistant. How can I help you today? " +
+    "Press 1 to continue in English. Press 2 for Kiswahili. " +
+    "Hujambo! Naitwa Wanjiku, msaidizi wako wa Serikali. Naweza kukusaidia vipi leo? " +
+    "Bonyeza 1 kuendelea kwa Kiingereza. Bonyeza 2 kwa Kiswahili.";
+
+  // Load services on mount
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  // Speak welcome message when loaded
+  // Speak Wanjiku's greeting when page loads
   useEffect(() => {
-    if (welcomeMessage && settings.voiceEnabled && settings.autoSpeak && !sessionLoading) {
-      speak(welcomeMessage);
+    if (!isLoading && !sessionLoading && !hasGreeted && settings.voiceEnabled) {
+      // Small delay to ensure everything is loaded
+      const timer = setTimeout(() => {
+        speak(wanjikuGreeting);
+        setHasGreeted(true);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [welcomeMessage, settings.voiceEnabled, settings.autoSpeak, sessionLoading, speak]);
+  }, [isLoading, sessionLoading, hasGreeted, settings.voiceEnabled, speak]);
+
+  // Handle keyboard input for language selection
+  const handleKeyPress = useCallback((event) => {
+    if (!showLanguageChoice) return;
+    
+    if (event.key === '1') {
+      // English selected
+      updateSetting('language', 'en');
+      setShowLanguageChoice(false);
+      speak("You have selected English. Welcome! How can I help you today?");
+      toast.success('Language set to English');
+    } else if (event.key === '2') {
+      // Kiswahili selected
+      updateSetting('language', 'sw');
+      setShowLanguageChoice(false);
+      speak("Umechagua Kiswahili. Karibu! Naweza kukusaidia vipi leo?");
+      toast.success('Lugha imewekwa Kiswahili');
+    }
+  }, [showLanguageChoice, updateSetting, speak]);
+
+  // Add keyboard listener for language selection
+  useEffect(() => {
+    window.addEventListener('keypress', handleKeyPress);
+    return () => window.removeEventListener('keypress', handleKeyPress);
+  }, [handleKeyPress]);
+
+  const handleLanguageSelect = (lang) => {
+    updateSetting('language', lang);
+    setShowLanguageChoice(false);
+    if (lang === 'en') {
+      speak("You have selected English. Welcome! How can I help you today?");
+      toast.success('Language set to English');
+    } else {
+      speak("Umechagua Kiswahili. Karibu! Naweza kukusaidia vipi leo?");
+      toast.success('Lugha imewekwa Kiswahili');
+    }
+  };
 
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      const [servicesData, welcomeData] = await Promise.all([
-        api.getServices(),
-        api.getWelcomeMessage(),
-      ]);
-
+      const servicesData = await api.getServices();
       setServices(servicesData.services || []);
-      setWelcomeMessage(welcomeData.greeting || '');
+      setWelcomeMessage(wanjikuGreeting);
     } catch (error) {
       console.error('Failed to load initial data:', error);
       toast.error('Failed to load services. Please refresh the page.');
-      
-      // Set default welcome message
-      setWelcomeMessage(
-        "Welcome to eCitizen Voice Assistant. I'm here to help you access government services."
-      );
+      setWelcomeMessage(wanjikuGreeting);
     } finally {
       setIsLoading(false);
     }
@@ -81,14 +124,90 @@ function HomePage() {
 
   return (
     <div className="container">
+      {/* Language Selection Modal */}
+      {showLanguageChoice && (
+        <div 
+          className="language-selection-overlay"
+          role="dialog"
+          aria-labelledby="language-title"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div 
+            className="language-selection-card"
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              padding: 'var(--spacing-xl)',
+              borderRadius: 'var(--border-radius-lg)',
+              maxWidth: '500px',
+              width: '90%',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: '4rem', marginBottom: 'var(--spacing-md)' }}>👋</div>
+            <h2 id="language-title" style={{ marginBottom: 'var(--spacing-md)', color: 'var(--color-primary)' }}>
+              Welcome / Karibu
+            </h2>
+            <p style={{ marginBottom: 'var(--spacing-lg)', fontSize: '1.1rem', lineHeight: '1.6' }}>
+              Hello! I'm <strong>Wanjiku</strong>, your Government assistant.<br />
+              Hujambo! Naitwa <strong>Wanjiku</strong>, msaidizi wako wa Serikali.
+            </p>
+            <p style={{ marginBottom: 'var(--spacing-lg)', color: 'var(--color-text-secondary)' }}>
+              Choose your language / Chagua lugha yako:
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--spacing-md)', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => handleLanguageSelect('en')}
+                className="btn btn-primary"
+                style={{ 
+                  padding: 'var(--spacing-md) var(--spacing-xl)',
+                  fontSize: '1.2rem',
+                  minWidth: '180px',
+                }}
+                aria-label="Press 1 for English"
+              >
+                🇬🇧 English (1)
+              </button>
+              <button
+                onClick={() => handleLanguageSelect('sw')}
+                className="btn btn-secondary"
+                style={{ 
+                  padding: 'var(--spacing-md) var(--spacing-xl)',
+                  fontSize: '1.2rem',
+                  minWidth: '180px',
+                }}
+                aria-label="Press 2 for Kiswahili"
+              >
+                🇰🇪 Kiswahili (2)
+              </button>
+            </div>
+            <p style={{ marginTop: 'var(--spacing-lg)', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+              Press <kbd style={{ padding: '2px 8px', backgroundColor: 'var(--color-background)', borderRadius: '4px' }}>1</kbd> or <kbd style={{ padding: '2px 8px', backgroundColor: 'var(--color-background)', borderRadius: '4px' }}>2</kbd> on your keyboard
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="home-hero" aria-labelledby="hero-title">
         <h1 id="hero-title" className="home-hero-title">
-          eCitizen Voice Assistant
+          {settings.language === 'sw' ? 'Msaidizi wa Sauti wa eCitizen' : 'eCitizen Voice Assistant'}
         </h1>
         <p className="home-hero-subtitle">
-          Access Kenyan government services using your voice. 
-          Book appointments for Passport, National ID, Driving License, and more.
+          {settings.language === 'sw' 
+            ? 'Pata huduma za serikali ya Kenya kwa kutumia sauti yako. Weka miadi ya Pasipoti, Kitambulisho cha Taifa, Leseni ya Kuendesha, na zaidi.'
+            : 'Access Kenyan government services using your voice. Book appointments for Passport, National ID, Driving License, and more.'}
         </p>
       </section>
 
@@ -114,14 +233,16 @@ function HomePage() {
         aria-labelledby="services-title"
       >
         <h2 id="services-title" className="section-title">
-          Available Services
+          {settings.language === 'sw' ? 'Huduma Zinazopatikana' : 'Available Services'}
         </h2>
         
         <p 
           className="text-center mb-lg"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          Select a service below or use voice commands to get started
+          {settings.language === 'sw' 
+            ? 'Chagua huduma hapa chini au tumia amri za sauti kuanza'
+            : 'Select a service below or use voice commands to get started'}
         </p>
 
         <div className="services-grid" role="list">
