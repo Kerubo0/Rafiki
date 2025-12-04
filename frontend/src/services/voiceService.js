@@ -97,12 +97,24 @@ class VoiceService {
     return 'speechSynthesis' in window;
   }
 
-  startListening() {
+  setLanguage(lang) {
+    // Set recognition language: sw-KE for Kiswahili, en-KE for English
+    if (this.recognition) {
+      this.recognition.lang = lang || 'en-KE';
+    }
+  }
+
+  startListening(lang = null) {
     if (!this.recognition) {
       if (this.onError) {
         this.onError('Speech recognition is not supported in this browser');
       }
       return false;
+    }
+
+    // Update language if provided
+    if (lang) {
+      this.recognition.lang = lang;
     }
 
     if (this.isListening) {
@@ -138,16 +150,27 @@ class VoiceService {
       this.synthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = options.rate || 1;
+      
+      // Use slower rate: 0.8 = 20% slower than normal
+      utterance.rate = options.rate || 0.8;
       utterance.pitch = options.pitch || 1;
       utterance.volume = options.volume || 1;
       utterance.lang = options.lang || 'en-KE';
 
-      // Select voice if specified
-      if (options.voiceIndex !== undefined) {
-        const voices = this.synthesis.getVoices();
-        if (voices[options.voiceIndex]) {
-          utterance.voice = voices[options.voiceIndex];
+      // Try to select a natural-sounding voice
+      const voices = this.synthesis.getVoices();
+      if (options.voiceIndex !== undefined && voices[options.voiceIndex]) {
+        utterance.voice = voices[options.voiceIndex];
+      } else {
+        // Find a natural/neural voice if available
+        const langPrefix = options.lang?.startsWith('sw') ? 'sw' : 'en';
+        const preferredVoice = voices.find(voice => 
+          voice.lang.startsWith(langPrefix) && 
+          (voice.name.includes('Neural') || voice.name.includes('Natural') || voice.name.includes('Google'))
+        ) || voices.find(voice => voice.lang.startsWith(langPrefix));
+        
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
         }
       }
 

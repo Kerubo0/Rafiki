@@ -7,12 +7,25 @@ import React from 'react';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 function AccessibilityControls() {
-  const { settings, toggleSetting, announce } = useAccessibility();
+  const { settings, toggleSetting, updateSetting, announce, speak } = useAccessibility();
 
   const handleToggle = (setting, label) => {
     toggleSetting(setting);
     const newState = !settings[setting];
     announce(`${label} ${newState ? 'enabled' : 'disabled'}`);
+  };
+
+  const handleLanguageChange = (lang) => {
+    updateSetting('language', lang);
+    const langName = lang === 'sw' ? 'Kiswahili' : 'English';
+    announce(`Language changed to ${langName}`);
+    
+    // Speak confirmation in the selected language
+    if (lang === 'sw') {
+      speak('Lugha imebadilishwa kuwa Kiswahili');
+    } else {
+      speak('Language changed to English');
+    }
   };
 
   return (
@@ -21,6 +34,28 @@ function AccessibilityControls() {
       role="group"
       aria-label="Accessibility controls"
     >
+      {/* Language Selection */}
+      <div className="language-selector" role="group" aria-label="Language selection">
+        <button
+          className={`accessibility-btn lang-btn ${settings.language === 'en' ? 'active' : ''}`}
+          onClick={() => handleLanguageChange('en')}
+          aria-pressed={settings.language === 'en'}
+          title="Switch to English"
+        >
+          <span aria-hidden="true">EN</span>
+          <span className="sr-only">English</span>
+        </button>
+        <button
+          className={`accessibility-btn lang-btn ${settings.language === 'sw' ? 'active' : ''}`}
+          onClick={() => handleLanguageChange('sw')}
+          aria-pressed={settings.language === 'sw'}
+          title="Badilisha kuwa Kiswahili"
+        >
+          <span aria-hidden="true">SW</span>
+          <span className="sr-only">Kiswahili</span>
+        </button>
+      </div>
+
       <button
         className={`accessibility-btn ${settings.highContrast ? 'active' : ''}`}
         onClick={() => handleToggle('highContrast', 'High contrast mode')}

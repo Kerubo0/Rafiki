@@ -48,11 +48,14 @@ function ChatInterface({ onResponse }) {
     });
 
     try {
+      // Determine language code for API: sw-KE for Kiswahili, en-KE for English
+      const languageCode = settings.language === 'sw' ? 'sw-KE' : 'en-KE';
+      
       const response = await api.processVoiceInput({
         text_input: text,
         session_id: sessionId,
         input_mode: 'text',
-        language: 'en-KE',
+        language: languageCode,
       });
 
       // Add assistant response
