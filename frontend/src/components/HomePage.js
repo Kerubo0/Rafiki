@@ -7,7 +7,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { useSession } from '../context/SessionContext';
-import VoiceButton from './VoiceButton';
+import ElevenLabsVoiceButton from './ElevenLabsVoiceButton';
 import ChatInterface from './ChatInterface';
 import ServiceCard from './ServiceCard';
 import api from '../services/api';
@@ -220,7 +220,8 @@ function HomePage() {
           Voice Assistant
         </h2>
         
-        <VoiceButton onResponse={handleVoiceResponse} />
+        {/* ElevenLabs Voice Button - Talk to Wanjiku */}
+        <ElevenLabsVoiceButton />
         
         <div style={{ width: '100%', maxWidth: '600px' }}>
           <ChatInterface onResponse={handleVoiceResponse} />

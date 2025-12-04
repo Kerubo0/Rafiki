@@ -3,6 +3,7 @@ export { default as Header } from './Header';
 export { default as Footer } from './Footer';
 export { default as AccessibilityControls } from './AccessibilityControls';
 export { default as VoiceButton } from './VoiceButton';
+export { default as ElevenLabsVoiceButton } from './ElevenLabsVoiceButton';
 export { default as ChatInterface } from './ChatInterface';
 export { default as ServiceCard } from './ServiceCard';
 export { default as ProgressSteps } from './ProgressSteps';
