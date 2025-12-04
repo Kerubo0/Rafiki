@@ -224,7 +224,7 @@ async def get_welcome_message():
     
     Returns a greeting based on the time of day.
     """
-    from .config import ASSISTANT_RESPONSES
+    from config import ASSISTANT_RESPONSES
     
     hour = datetime.now().hour
     
