@@ -13,9 +13,10 @@ const defaultSettings = {
   largeText: false,
   reducedMotion: false,
   screenReaderMode: false,
-  speechRate: 150,
+  speechRate: 80, // Reduced from 150 to 80 for slower speech
   voiceEnabled: true,
   autoSpeak: true,
+  language: 'en', // 'en' for English, 'sw' for Kiswahili
 };
 
 export function AccessibilityProvider({ children }) {
@@ -92,13 +93,16 @@ export function AccessibilityProvider({ children }) {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = (options.rate || settings.speechRate) / 100;
+    utterance.rate = (options.rate || settings.speechRate) / 100; // Lower rate = slower speech
     utterance.pitch = options.pitch || 1;
     utterance.volume = options.volume || 1;
-    utterance.lang = options.lang || 'en-KE';
+    
+    // Set language based on user preference
+    const langCode = options.lang || (settings.language === 'sw' ? 'sw-KE' : 'en-KE');
+    utterance.lang = langCode;
 
     window.speechSynthesis.speak(utterance);
-  }, [settings.voiceEnabled, settings.speechRate]);
+  }, [settings.voiceEnabled, settings.speechRate, settings.language]);
 
   // Stop speaking
   const stopSpeaking = useCallback(() => {
