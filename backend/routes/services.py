@@ -5,10 +5,10 @@ Services information API endpoints.
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 
-from models.schemas import ServiceType, ServiceInfoResponse, ServicesListResponse
-from services.booking_service import booking_service
-from config import GOVERNMENT_SERVICES
-from utils.logger import get_logger
+from ..models.schemas import ServiceType, ServiceInfoResponse, ServicesListResponse
+from ..services.booking_service import booking_service
+from ..config import GOVERNMENT_SERVICES
+from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/services", tags=["Services"])

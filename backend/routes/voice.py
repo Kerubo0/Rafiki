@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 
-from models.schemas import (
+from ..models.schemas import (
     VoiceInputRequest,
     TextInputRequest,
     AssistantResponse,
@@ -15,14 +15,14 @@ from models.schemas import (
     TTSResponse,
     ErrorResponse
 )
-from services.voice_service import voice_service
-from services.gemini_service import gemini_service
-from services.dialogflow_service import dialogflow_service
-from services.booking_service import booking_service
-from utils.session_manager import session_manager
-from utils.rate_limiter import rate_limiter
-from utils.logger import get_logger, RequestLogger
-from config import ASSISTANT_RESPONSES
+from ..services.voice_service import voice_service
+from ..services.gemini_service import gemini_service
+from ..services.dialogflow_service import dialogflow_service
+from ..services.booking_service import booking_service
+from ..utils.session_manager import session_manager
+from ..utils.rate_limiter import rate_limiter
+from ..utils.logger import get_logger, RequestLogger
+from ..config import ASSISTANT_RESPONSES
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/voice", tags=["Voice Processing"])
@@ -330,14 +330,14 @@ async def get_voices():
     description="Update text-to-speech settings"
 )
 async def update_voice_settings(
-    rate: Optional[int] = None,
+    rate: Optional[int] = 160,  # Default to normal conversational speed
     volume: Optional[float] = None,
     voice_id: Optional[int] = None
 ):
     """
     Update TTS settings.
     
-    - **rate**: Speech rate (words per minute, 100-300)
+    - **rate**: Speech rate (words per minute, 100-300, default: 160)
     - **volume**: Volume level (0.0 to 1.0)
     - **voice_id**: Voice index from available voices
     """

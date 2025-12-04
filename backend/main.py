@@ -13,15 +13,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
-from config import get_settings
-from routes import voice_router, booking_router, services_router, session_router
-from utils.logger import setup_logging, get_logger
-from utils.session_manager import session_manager
-from utils.rate_limiter import rate_limiter
-from services.gemini_service import gemini_service
-from services.dialogflow_service import dialogflow_service
-from services.voice_service import voice_service
-from services.sms_service import sms_service
+from .config import get_settings
+from .routes import voice_router, booking_router, services_router, session_router
+from .utils.logger import setup_logging, get_logger
+from .utils.session_manager import session_manager
+from .utils.rate_limiter import rate_limiter
+from .services.gemini_service import gemini_service
+from .services.dialogflow_service import dialogflow_service
+from .services.voice_service import voice_service
+from .services.sms_service import sms_service
 
 # Setup logging
 setup_logging()
