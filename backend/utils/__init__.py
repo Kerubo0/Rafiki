@@ -1,4 +1,4 @@
 # Utils package
-from .logger import get_logger, setup_logging
-from .session_manager import SessionManager
-from .rate_limiter import RateLimiter
+from utils.logger import get_logger, setup_logging
+from utils.session_manager import SessionManager
+from utils.rate_limiter import RateLimiter

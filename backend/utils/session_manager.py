@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
 
-from .logger import get_logger
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
