@@ -6,8 +6,8 @@ import json
 from typing import Dict, Any, Optional, List
 import google.generativeai as genai
 
-from ..config import get_settings, GOVERNMENT_SERVICES, ASSISTANT_RESPONSES
-from ..utils.logger import get_logger
+from config import get_settings, GOVERNMENT_SERVICES, ASSISTANT_RESPONSES
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -28,14 +28,34 @@ class GeminiService:
         # System context for the assistant
         self._system_context = self._build_system_context()
     
-    def _build_system_context(self) -> str:
+    def _build_system_context(self, language: str = 'en') -> str:
         """Build the system context prompt for Gemini."""
         services_info = "\n".join([
             f"- {key}: {info['name']} - {info['description']}"
             for key, info in GOVERNMENT_SERVICES.items()
         ])
         
-        return f"""You are Wanjiku, a friendly and helpful voice assistant designed to help visually impaired users access Kenyan government services through the eCitizen portal.
+        if language == 'sw':
+            # Kiswahili system context
+            return f"""Wewe ni Wanjiku, msaidizi wa sauti wenye urafiki ambaye umesanifiwa kusaidia watumiaji wasioona vizuri kupata huduma za serikali ya Kenya kupitia tovuti ya eCitizen.
+
+Jukumu lako:
+1. Kusaidia watumiaji kuweka miadi kwa huduma za serikali
+2. Kutoa habari kuhusu nyaraka zinazohitajika na taratibu
+3. Kuongoza watumiaji hatua kwa hatua katika mchakato wa kuweka miadi
+4. Kuwa mvumilivu, wazi, na kuzungumza kwa upole
+5. Daima thibitisha vitendo kabla ya kuendelea
+6. Toa majibu yanayofaa kwa sauti (epuka marejeleo ya kuona)
+
+Huduma zinazopatikana:
+{services_info}
+
+Nyakati zinazopatikana: Asubuhi (8:00 AM - 12:00 PM) au Alasiri (2:00 PM - 5:00 PM)
+
+Jibu kwa Kiswahili rahisi na kueleweka. Zungumza kwa upole na urafiki."""
+        else:
+            # English system context (default)
+            return f"""You are Wanjiku, a friendly and helpful voice assistant designed to help visually impaired users access Kenyan government services through the eCitizen portal.
 
 Your role:
 1. Help users book appointments for government services
@@ -111,7 +131,8 @@ Always respond in a way that's easy to understand when spoken aloud."""
         self,
         user_message: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        language: str = 'en'
     ) -> Dict[str, Any]:
         """
         Process a user message and generate a response.
@@ -120,22 +141,27 @@ Always respond in a way that's easy to understand when spoken aloud."""
             user_message: The user's input message
             conversation_history: Previous conversation turns
             context: Additional context (booking state, user preferences)
+            language: Response language ('en' for English, 'sw' for Kiswahili)
         
         Returns:
             Dictionary containing response text, intent, entities, and suggested actions
         """
         if not self._initialized:
             if not self.initialize():
+                error_msg = "Samahani, kuna tatizo. Jaribu tena." if language == 'sw' else ASSISTANT_RESPONSES["error_generic"]
                 return {
-                    "text": ASSISTANT_RESPONSES["error_generic"],
+                    "text": error_msg,
                     "intent": "error",
                     "entities": {},
                     "suggested_actions": ["Try again", "Say 'help' for assistance"]
                 }
         
         try:
+            # Update system context based on language
+            self._system_context = self._build_system_context(language)
+            
             # Build the prompt with context
-            prompt = self._build_prompt(user_message, conversation_history, context)
+            prompt = self._build_prompt(user_message, conversation_history, context, language)
             
             # Generate response
             response = await self._generate_response(prompt)
@@ -143,7 +169,7 @@ Always respond in a way that's easy to understand when spoken aloud."""
             # Parse the response
             parsed_response = self._parse_response(response, user_message)
             
-            logger.info(f"Processed message - Intent: {parsed_response.get('intent')}")
+            logger.info(f"Processed message - Intent: {parsed_response.get('intent')}, Language: {language}")
             return parsed_response
             
         except Exception as e:
@@ -159,10 +185,17 @@ Always respond in a way that's easy to understand when spoken aloud."""
         self,
         user_message: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        language: str = 'en'
     ) -> str:
         """Build the full prompt including history and context."""
         prompt_parts = []
+        
+        # Add language instruction
+        if language == 'sw':
+            prompt_parts.append("IMPORTANT: Respond in Kiswahili (Swahili) language only.")
+        else:
+            prompt_parts.append("IMPORTANT: Respond in English language only.")
         
         # Add context if available
         if context:
@@ -185,22 +218,23 @@ Always respond in a way that's easy to understand when spoken aloud."""
         prompt_parts.append(f"User: {user_message}")
         
         # Add response format instruction
+        response_lang = "Kiswahili" if language == 'sw' else "English"
         prompt_parts.append("""
 Please respond with a JSON object containing:
-{
-    "response_text": "Your natural language response to speak to the user",
+{{
+    "response_text": "Your natural language response in """ + response_lang + """ to speak to the user",
     "intent": "detected intent (greeting/book_appointment/service_info/confirm/cancel/help/unknown)",
-    "entities": {
+    "entities": {{
         "service_type": "passport/national_id/driving_license/good_conduct or null",
         "user_name": "extracted name or null",
         "phone_number": "extracted phone or null",
         "time_slot": "morning/afternoon or null",
         "date": "extracted date or null",
         "confirmation": "yes/no or null"
-    },
+    }},
     "requires_input": true/false,
     "suggested_actions": ["action1", "action2"]
-}""")
+}}""")
         
         return "\n\n".join(prompt_parts)
     
