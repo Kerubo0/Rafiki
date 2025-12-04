@@ -147,7 +147,7 @@ function HomePage() {
           <div 
             className="language-selection-card"
             style={{
-              backgroundColor: 'var(--color-surface)',
+              backgroundColor: '#ffffff',
               padding: 'var(--spacing-xl)',
               borderRadius: 'var(--border-radius-lg)',
               maxWidth: '500px',
@@ -193,7 +193,7 @@ function HomePage() {
               </button>
             </div>
             <p style={{ marginTop: 'var(--spacing-lg)', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-              Press <kbd style={{ padding: '2px 8px', backgroundColor: 'var(--color-background)', borderRadius: '4px' }}>1</kbd> or <kbd style={{ padding: '2px 8px', backgroundColor: 'var(--color-background)', borderRadius: '4px' }}>2</kbd> on your keyboard
+              Press <kbd style={{ padding: '2px 8px', backgroundColor: '#e5e7eb', borderRadius: '4px' }}>1</kbd> or <kbd style={{ padding: '2px 8px', backgroundColor: '#e5e7eb', borderRadius: '4px' }}>2</kbd> on your keyboard
             </p>
           </div>
         </div>
