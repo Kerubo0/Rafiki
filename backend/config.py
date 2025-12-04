@@ -4,9 +4,13 @@ All sensitive credentials are loaded from environment variables.
 """
 
 import os
+from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+# Get the path to the .env file (in parent directory)
+ENV_FILE = Path(__file__).parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -59,10 +63,17 @@ class Settings(BaseSettings):
     # eCitizen Services
     ECITIZEN_BASE_URL: str = "https://www.ecitizen.go.ke"
     
+    # Extra fields from .env
+    APP_ENV: str = "development"
+    SECRET_KEY: str = "change-this-to-a-secure-random-string"
+    DATABASE_URL: str = "sqlite:///./ecitizen.db"
+    SESSION_TIMEOUT_MINUTES: int = 30
+    
     class Config:
-        env_file = ".env"
+        env_file = str(Path(__file__).parent.parent / ".env")
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields from .env
     
     @property
     def cors_origins_list(self) -> list[str]:
