@@ -5,8 +5,8 @@ SMS service using Africa's Talking API.
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-from ..config import get_settings
-from ..utils.logger import get_logger
+from config import get_settings
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
