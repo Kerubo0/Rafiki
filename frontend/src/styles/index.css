@@ -270,7 +270,7 @@ a:hover {
   border-radius: var(--radius-full);
 }
 
-/* Voice Button - Extra large and prominent */
+/* Voice Button */
 .btn-voice {
   min-height: 80px;
   min-width: 80px;
@@ -278,6 +278,8 @@ a:hover {
   border-radius: var(--radius-full);
   font-size: var(--font-size-xl);
   box-shadow: var(--shadow-lg);
+  display: block;
+  margin: 0 auto;
 }
 
 .btn-voice.listening {

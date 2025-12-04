@@ -148,7 +148,7 @@ function HomePage() {
         <div style={{ display: 'grid', gap: 'var(--spacing-lg)', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
           <div>
             <h3 style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--spacing-sm)' }}>
-              🎤 Voice Commands
+              Voice Commands
             </h3>
             <ul style={{ paddingLeft: 'var(--spacing-lg)', color: 'var(--color-text-secondary)' }}>
               <li>"Book a passport appointment"</li>
@@ -160,7 +160,7 @@ function HomePage() {
           
           <div>
             <h3 style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--spacing-sm)' }}>
-              ⌨️ Keyboard Navigation
+              Keyboard Navigation
             </h3>
             <ul style={{ paddingLeft: 'var(--spacing-lg)', color: 'var(--color-text-secondary)' }}>
               <li><kbd>Tab</kbd> - Navigate between elements</li>
@@ -171,7 +171,7 @@ function HomePage() {
           
           <div>
             <h3 style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--spacing-sm)' }}>
-              ♿ Accessibility
+              Accessibility
             </h3>
             <ul style={{ paddingLeft: 'var(--spacing-lg)', color: 'var(--color-text-secondary)' }}>
               <li>High contrast mode available</li>
