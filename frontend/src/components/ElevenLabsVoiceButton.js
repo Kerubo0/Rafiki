@@ -18,7 +18,7 @@ function ElevenLabsVoiceButton({ disabled = false }) {
     elevenLabsService.onConnect = () => {
       setIsActive(true);
       setStatus('listening');
-      announce('Connected to Wanjiku. You can start speaking now.');
+      announce('Connected to Habari. You can start speaking now.');
       toast.success('Connected! Start speaking...');
     };
 
@@ -31,7 +31,7 @@ function ElevenLabsVoiceButton({ disabled = false }) {
     elevenLabsService.onModeChange = (mode) => {
       setStatus(mode);
       if (mode === 'speaking') {
-        announce('Wanjiku is speaking...');
+        announce('Habari is speaking...');
       } else if (mode === 'listening') {
         announce('Listening...');
       }
@@ -63,7 +63,7 @@ function ElevenLabsVoiceButton({ disabled = false }) {
     } else {
       // Start conversation
       setStatus('connecting');
-      announce('Connecting to Wanjiku...');
+      announce('Connecting to Habari...');
       
       const success = await elevenLabsService.startConversation();
       if (!success) {
@@ -80,11 +80,11 @@ function ElevenLabsVoiceButton({ disabled = false }) {
       case 'listening':
         return settings.language === 'sw' ? 'Inasikiliza...' : 'Listening...';
       case 'speaking':
-        return settings.language === 'sw' ? 'Wanjiku anazungumza...' : 'Wanjiku is speaking...';
+        return settings.language === 'sw' ? 'Habari anazungumza...' : 'Habari is speaking...';
       default:
         return settings.language === 'sw' 
-          ? 'Bonyeza kuongea na Wanjiku' 
-          : 'Tap to talk to Wanjiku';
+          ? 'Bonyeza kuongea na Habari' 
+          : 'Tap to talk to Habari';
     }
   };
 
@@ -103,7 +103,7 @@ function ElevenLabsVoiceButton({ disabled = false }) {
         className={getButtonClass()}
         onClick={toggleConversation}
         disabled={disabled || status === 'connecting'}
-        aria-label={isActive ? 'End conversation with Wanjiku' : 'Start conversation with Wanjiku'}
+        aria-label={isActive ? 'End conversation with Habari' : 'Start conversation with Habari'}
         aria-pressed={isActive}
       >
         <div className="voice-button-inner">
@@ -145,8 +145,8 @@ function ElevenLabsVoiceButton({ disabled = false }) {
       {!isActive && (
         <p className="voice-instructions">
           {settings.language === 'sw' 
-            ? 'Bonyeza kitufe hapo juu kuanza mazungumzo ya sauti na Wanjiku'
-            : 'Press the button above to start a voice conversation with Wanjiku'}
+            ? 'Bonyeza kitufe hapo juu kuanza mazungumzo ya sauti na Habari'
+            : 'Press the button above to start a voice conversation with Habari'}
         </p>
       )}
 

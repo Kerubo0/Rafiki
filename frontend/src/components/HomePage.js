@@ -23,11 +23,11 @@ function HomePage() {
   const [hasGreeted, setHasGreeted] = useState(false);
   const [showLanguageChoice, setShowLanguageChoice] = useState(true);
 
-  // Wanjiku's bilingual greeting
-  const wanjikuGreeting = 
-    "Hello! My name is Wanjiku, your Government assistant. How can I help you today? " +
+  // Habari's bilingual greeting
+  const habariGreeting = 
+    "Hello! My name is Habari, your Government assistant. How can I help you today? " +
     "Press 1 to continue in English. Press 2 for Kiswahili. " +
-    "Hujambo! Naitwa Wanjiku, msaidizi wako wa Serikali. Naweza kukusaidia vipi leo? " +
+    "Hujambo! Naitwa Habari, msaidizi wako wa Serikali. Naweza kukusaidia vipi leo? " +
     "Bonyeza 1 kuendelea kwa Kiingereza. Bonyeza 2 kwa Kiswahili.";
 
   // Load services on mount
@@ -35,12 +35,12 @@ function HomePage() {
     loadInitialData();
   }, []);
 
-  // Speak Wanjiku's greeting when page loads
+  // Speak Habari's greeting when page loads
   useEffect(() => {
     if (!isLoading && !sessionLoading && !hasGreeted && settings.voiceEnabled) {
       // Small delay to ensure everything is loaded
       const timer = setTimeout(() => {
-        speak(wanjikuGreeting);
+        speak(habariGreeting);
         setHasGreeted(true);
       }, 500);
       return () => clearTimeout(timer);
@@ -89,11 +89,11 @@ function HomePage() {
     try {
       const servicesData = await api.getServices();
       setServices(servicesData.services || []);
-      setWelcomeMessage(wanjikuGreeting);
+      setWelcomeMessage(habariGreeting);
     } catch (error) {
       console.error('Failed to load initial data:', error);
       toast.error('Failed to load services. Please refresh the page.');
-      setWelcomeMessage(wanjikuGreeting);
+      setWelcomeMessage(habariGreeting);
     } finally {
       setIsLoading(false);
     }
@@ -160,8 +160,8 @@ function HomePage() {
               Welcome / Karibu
             </h2>
             <p style={{ marginBottom: 'var(--spacing-lg)', fontSize: '1.1rem', lineHeight: '1.6' }}>
-              Hello! I'm <strong>Wanjiku</strong>, your Government assistant.<br />
-              Hujambo! Naitwa <strong>Wanjiku</strong>, msaidizi wako wa Serikali.
+              Hello! I'm <strong>Habari</strong>, your Government assistant.<br />
+              Hujambo! Naitwa <strong>Habari</strong>, msaidizi wako wa Serikali.
             </p>
             <p style={{ marginBottom: 'var(--spacing-lg)', color: 'var(--color-text-secondary)' }}>
               Choose your language / Chagua lugha yako:
