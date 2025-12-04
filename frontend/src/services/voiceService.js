@@ -97,12 +97,24 @@ class VoiceService {
     return 'speechSynthesis' in window;
   }
 
-  startListening() {
+  setLanguage(lang) {
+    // Set recognition language: sw-KE for Kiswahili, en-KE for English
+    if (this.recognition) {
+      this.recognition.lang = lang || 'en-KE';
+    }
+  }
+
+  startListening(lang = null) {
     if (!this.recognition) {
       if (this.onError) {
         this.onError('Speech recognition is not supported in this browser');
       }
       return false;
+    }
+
+    // Update language if provided
+    if (lang) {
+      this.recognition.lang = lang;
     }
 
     if (this.isListening) {
