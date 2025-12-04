@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 
-from ..models.schemas import (
+from models.schemas import (
     VoiceInputRequest,
     TextInputRequest,
     AssistantResponse,
@@ -15,14 +15,14 @@ from ..models.schemas import (
     TTSResponse,
     ErrorResponse
 )
-from ..services.voice_service import voice_service
-from ..services.gemini_service import gemini_service
-from ..services.dialogflow_service import dialogflow_service
-from ..services.booking_service import booking_service
-from ..utils.session_manager import session_manager
-from ..utils.rate_limiter import rate_limiter
-from ..utils.logger import get_logger, RequestLogger
-from ..config import ASSISTANT_RESPONSES
+from services.voice_service import voice_service
+from services.gemini_service import gemini_service
+from services.dialogflow_service import dialogflow_service
+from services.booking_service import booking_service
+from utils.session_manager import session_manager
+from utils.rate_limiter import rate_limiter
+from utils.logger import get_logger, RequestLogger
+from config import ASSISTANT_RESPONSES
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/voice", tags=["Voice Processing"])
@@ -120,6 +120,9 @@ async def process_input(
                 if booking_result:
                     dialogflow_result["response"] = booking_result["message"]
             
+            # Determine the response language (sw for Kiswahili, en for English)
+            response_language = "sw" if request.language.startswith("sw") else "en"
+            
             # Use Gemini for enhanced responses if needed
             gemini_response = None
             if dialogflow_result.get("intent") in ["unknown", "fallback"]:
@@ -129,7 +132,8 @@ async def process_input(
                     context={
                         "booking_state": session.booking_state,
                         "last_intent": session.conversation_context.get("last_intent")
-                    }
+                    },
+                    language=response_language
                 )
             
             # Determine final response
