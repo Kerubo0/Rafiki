@@ -1,6 +1,7 @@
 /**
  * Voice Interface Component
  * Combines the TalkingAvatar with voice controls for a complete experience
+ * ElevenLabs handles speech, Gemini handles automation
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -8,15 +9,21 @@ import { useAccessibility } from '../context/AccessibilityContext';
 import TalkingAvatar from './TalkingAvatar';
 import elevenLabsService from '../services/elevenLabsService';
 import avatarService from '../services/avatarService';
+import eCitizenAutomation from '../services/eCitizenAutomation';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
-function VoiceInterface({ disabled = false }) {
+function VoiceInterface({ disabled = false, onAutomationAction }) {
   const [isActive, setIsActive] = useState(false);
   const [status, setStatus] = useState('idle'); // idle, connecting, listening, speaking, thinking
   const [videoUrl, setVideoUrl] = useState(null);
   const [useVideoAvatar, setUseVideoAvatar] = useState(false);
-  const { settings, announce } = useAccessibility();
+  const [transcript, setTranscript] = useState('');
+  const [lastResponse, setLastResponse] = useState('');
+  const [useLocalGemini, setUseLocalGemini] = useState(true); // Use our Gemini backend
+  const { settings, announce, speak } = useAccessibility();
   const videoRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   // Check SadTalker availability on mount
   useEffect(() => {
@@ -28,7 +35,130 @@ function VoiceInterface({ disabled = false }) {
     checkAvatar();
   }, []);
 
-  // Setup ElevenLabs callbacks
+  // Setup speech recognition for local Gemini mode
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = settings.language === 'sw' ? 'sw-KE' : 'en-KE';
+
+      recognitionRef.current.onresult = (event) => {
+        const current = event.resultIndex;
+        const result = event.results[current];
+        const transcriptText = result[0].transcript;
+        setTranscript(transcriptText);
+        
+        if (result.isFinal) {
+          handleUserInput(transcriptText);
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error !== 'no-speech') {
+          toast.error('Speech recognition error. Please try again.');
+        }
+        setStatus('idle');
+      };
+
+      recognitionRef.current.onend = () => {
+        if (isActive && status === 'listening') {
+          // Restart recognition if still active
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            console.log('Recognition restart skipped');
+          }
+        }
+      };
+    }
+  }, [settings.language, isActive, status]);
+
+  // Handle user voice input - send to Gemini for processing
+  const handleUserInput = useCallback(async (userMessage) => {
+    if (!userMessage.trim()) return;
+
+    setStatus('thinking');
+    announce('Processing your request...');
+
+    try {
+      // Send to our Gemini backend
+      const response = await api.sendMessage(userMessage, settings.language);
+      
+      if (response) {
+        const responseText = response.text || response.response;
+        setLastResponse(responseText);
+        
+        // Use ElevenLabs or browser TTS to speak the response
+        setStatus('speaking');
+        await speakResponse(responseText);
+        
+        // Handle automation if present
+        if (response.automation && response.automation.action !== 'none') {
+          await handleAutomation(response.automation, response.entities);
+        }
+        
+        // Store entities for later autofill
+        if (response.entities) {
+          eCitizenAutomation.setUserInfo(response.entities);
+        }
+        
+        // Callback for parent component
+        if (onAutomationAction) {
+          onAutomationAction(response);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing message:', error);
+      const errorMsg = settings.language === 'sw' 
+        ? 'Samahani, kuna tatizo. Jaribu tena.'
+        : 'Sorry, there was an error. Please try again.';
+      await speakResponse(errorMsg);
+    }
+
+    setStatus('listening');
+  }, [settings.language, announce, onAutomationAction]);
+
+  // Speak response using ElevenLabs or browser TTS
+  const speakResponse = useCallback(async (text) => {
+    // First try ElevenLabs if connected
+    if (elevenLabsService.isActive()) {
+      // ElevenLabs will handle speaking through the conversation
+      return;
+    }
+    
+    // Fallback to browser TTS
+    speak(text);
+    
+    // Wait for speech to complete (estimate)
+    const wordsPerMinute = 130;
+    const words = text.split(' ').length;
+    const duration = (words / wordsPerMinute) * 60 * 1000;
+    await new Promise(resolve => setTimeout(resolve, duration));
+  }, [speak]);
+
+  // Handle automation commands from Gemini
+  const handleAutomation = useCallback(async (automation, entities) => {
+    const result = await eCitizenAutomation.executeAutomation(automation);
+    
+    if (result.success && !result.noAction) {
+      // Announce what was done
+      if (result.message) {
+        toast.success(result.message.substring(0, 100));
+        await speakResponse(result.message);
+      }
+    } else if (!result.success) {
+      if (result.fallbackUrl) {
+        // Popup blocked, provide link
+        toast.error('Popup blocked. Click the link below.');
+        window.open(result.fallbackUrl, '_blank');
+      }
+    }
+  }, [speakResponse]);
+
+  // Setup ElevenLabs callbacks (for direct ElevenLabs mode)
   useEffect(() => {
     elevenLabsService.onConnect = () => {
       setIsActive(true);
@@ -41,7 +171,6 @@ function VoiceInterface({ disabled = false }) {
       setIsActive(false);
       setStatus('idle');
       announce('Conversation ended.');
-      // Cleanup video URL
       if (videoUrl) {
         avatarService.revokeVideoUrl(videoUrl);
         setVideoUrl(null);
@@ -57,6 +186,22 @@ function VoiceInterface({ disabled = false }) {
       }
     };
 
+    elevenLabsService.onMessage = async (message) => {
+      // When ElevenLabs agent responds, we can still trigger automation
+      // by analyzing the message through our backend
+      if (message && useLocalGemini) {
+        try {
+          // Send to Gemini for automation analysis only
+          const response = await api.analyzeForAutomation(message);
+          if (response?.automation?.action !== 'none') {
+            await handleAutomation(response.automation, response.entities);
+          }
+        } catch (e) {
+          console.log('Automation analysis skipped');
+        }
+      }
+    };
+
     elevenLabsService.onError = (error) => {
       setIsActive(false);
       setStatus('idle');
@@ -64,7 +209,6 @@ function VoiceInterface({ disabled = false }) {
       announce(`Error: ${error}`);
     };
 
-    // Cleanup on unmount
     return () => {
       if (elevenLabsService.isActive()) {
         elevenLabsService.endConversation();
@@ -73,12 +217,19 @@ function VoiceInterface({ disabled = false }) {
         avatarService.revokeVideoUrl(videoUrl);
       }
     };
-  }, [announce, videoUrl]);
+  }, [announce, videoUrl, useLocalGemini, handleAutomation]);
 
+  // Toggle conversation - supports both modes
   const toggleConversation = useCallback(async () => {
     if (isActive) {
       // End conversation
-      await elevenLabsService.endConversation();
+      if (useLocalGemini) {
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+        }
+      } else {
+        await elevenLabsService.endConversation();
+      }
       setIsActive(false);
       setStatus('idle');
       announce('Conversation ended.');
@@ -86,15 +237,34 @@ function VoiceInterface({ disabled = false }) {
     } else {
       // Start conversation
       setStatus('connecting');
-      announce('Connecting to Habari...');
+      announce('Starting conversation with Habari...');
       
-      const success = await elevenLabsService.startConversation();
-      if (!success) {
-        setStatus('idle');
-        toast.error('Failed to connect. Please check your microphone.');
+      if (useLocalGemini) {
+        // Use local speech recognition + Gemini + browser TTS
+        try {
+          if (recognitionRef.current) {
+            recognitionRef.current.start();
+            setIsActive(true);
+            setStatus('listening');
+            toast.success('Listening! Say something...');
+            announce('Listening. You can speak now.');
+          } else {
+            throw new Error('Speech recognition not available');
+          }
+        } catch (error) {
+          setStatus('idle');
+          toast.error('Failed to start speech recognition.');
+        }
+      } else {
+        // Use ElevenLabs directly
+        const success = await elevenLabsService.startConversation();
+        if (!success) {
+          setStatus('idle');
+          toast.error('Failed to connect. Please check your microphone.');
+        }
       }
     }
-  }, [isActive, announce]);
+  }, [isActive, announce, useLocalGemini]);
 
   const getStatusText = () => {
     switch (status) {
@@ -145,6 +315,24 @@ function VoiceInterface({ disabled = false }) {
         )}
       </div>
 
+      {/* Transcript Display */}
+      {isActive && (transcript || lastResponse) && (
+        <div className="transcript-section">
+          {transcript && status === 'listening' && (
+            <div className="transcript user-transcript">
+              <span className="transcript-label">You:</span>
+              <span className="transcript-text">{transcript}</span>
+            </div>
+          )}
+          {lastResponse && (
+            <div className="transcript assistant-transcript">
+              <span className="transcript-label">Habari:</span>
+              <span className="transcript-text">{lastResponse}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Voice Control Section */}
       <div className="voice-controls">
         <button
@@ -175,18 +363,35 @@ function VoiceInterface({ disabled = false }) {
           {getStatusText()}
         </p>
 
+        {/* Mode Toggle */}
+        <div className="mode-toggle">
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={!useLocalGemini}
+              onChange={(e) => setUseLocalGemini(!e.target.checked)}
+              disabled={isActive}
+            />
+            <span className="toggle-text">
+              {useLocalGemini 
+                ? (settings.language === 'sw' ? 'Kutumia Gemini + TTS' : 'Using Gemini + TTS')
+                : (settings.language === 'sw' ? 'Kutumia ElevenLabs' : 'Using ElevenLabs')}
+            </span>
+          </label>
+        </div>
+
         {/* Instructions */}
         {!isActive && (
           <div className="instructions">
             <p>
               {settings.language === 'sw' 
-                ? 'Bonyeza kitufe kuanza mazungumzo ya sauti na Habari, msaidizi wako wa eCitizen.'
-                : 'Press the button to start a voice conversation with Habari, your eCitizen assistant.'}
+                ? 'Bonyeza kitufe kuanza mazungumzo ya sauti na Habari. Anaweza kukusaidia kufungua kurasa za eCitizen na kujaza fomu.'
+                : 'Press the button to start talking with Habari. She can help you open eCitizen pages and fill out forms.'}
             </p>
-            <p className="keyboard-hint">
+            <p className="feature-hint">
               {settings.language === 'sw'
-                ? 'Bonyeza Nafasi kuanza au kusimamisha'
-                : 'Press Space to start or stop'}
+                ? '✨ Sema "Tafadhali fungua ukurasa wa pasipoti" kufungua eCitizen'
+                : '✨ Say "Please open the passport page" to navigate to eCitizen'}
             </p>
           </div>
         )}
@@ -366,6 +571,77 @@ function VoiceInterface({ disabled = false }) {
         .indicator-text {
           font-size: var(--font-size-xs);
           color: var(--color-text-secondary);
+        }
+
+        /* Transcript styles */
+        .transcript-section {
+          width: 100%;
+          max-width: 350px;
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-sm);
+          padding: var(--spacing-md);
+          background: var(--color-surface);
+          border-radius: var(--border-radius-md);
+          max-height: 150px;
+          overflow-y: auto;
+        }
+
+        .transcript {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .transcript-label {
+          font-size: var(--font-size-xs);
+          font-weight: 600;
+          color: var(--color-text-secondary);
+        }
+
+        .transcript-text {
+          font-size: var(--font-size-sm);
+          color: var(--color-text-primary);
+          line-height: 1.4;
+        }
+
+        .user-transcript .transcript-label {
+          color: var(--color-primary);
+        }
+
+        .assistant-transcript .transcript-label {
+          color: #10b981;
+        }
+
+        /* Mode toggle */
+        .mode-toggle {
+          margin-top: var(--spacing-sm);
+        }
+
+        .toggle-label {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-xs);
+          cursor: pointer;
+          font-size: var(--font-size-xs);
+          color: var(--color-text-secondary);
+        }
+
+        .toggle-label input {
+          width: 16px;
+          height: 16px;
+          cursor: pointer;
+        }
+
+        .toggle-label input:disabled {
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+
+        .feature-hint {
+          font-size: var(--font-size-xs) !important;
+          color: var(--color-primary) !important;
+          margin-top: var(--spacing-sm) !important;
         }
 
         /* High contrast mode */

@@ -278,18 +278,41 @@ Always respond in a way that's easy to understand when spoken aloud. Sound like 
 Please respond with a JSON object containing:
 {{
     "response_text": "Your natural language response in """ + response_lang + """ to speak to the user",
-    "intent": "detected intent (greeting/book_appointment/service_info/confirm/cancel/help/unknown)",
+    "intent": "detected intent (greeting/book_appointment/service_info/confirm/cancel/help/navigate/autofill/unknown)",
     "entities": {{
         "service_type": "passport/national_id/driving_license/good_conduct or null",
         "user_name": "extracted name or null",
         "phone_number": "extracted phone or null",
+        "id_number": "extracted ID number or null",
+        "email": "extracted email or null",
         "time_slot": "morning/afternoon or null",
         "date": "extracted date or null",
         "confirmation": "yes/no or null"
     }},
+    "automation": {{
+        "action": "navigate/autofill/click/none",
+        "target_url": "eCitizen URL to open or null",
+        "form_data": {{
+            "field_name": "value to fill"
+        }},
+        "element_to_click": "button or link identifier or null"
+    }},
     "requires_input": true/false,
     "suggested_actions": ["action1", "action2"]
-}}""")
+}}
+
+AUTOMATION ACTIONS:
+- When user wants to apply for a service, use "navigate" to open the eCitizen page
+- When user provides their details, use "autofill" to fill the form fields
+- When user confirms, use "click" to submit or proceed
+
+eCitizen URLs:
+- Passport: https://accounts.ecitizen.go.ke/en/services/passport
+- National ID: https://accounts.ecitizen.go.ke/en/services/id
+- Driving License: https://accounts.ecitizen.go.ke/en/services/dl
+- Good Conduct: https://accounts.ecitizen.go.ke/en/services/goodconduct
+- All Services: https://accounts.ecitizen.go.ke/en/services
+""")
         
         return "\n\n".join(prompt_parts)
     
@@ -317,6 +340,7 @@ Please respond with a JSON object containing:
                     "text": parsed.get("response_text", response),
                     "intent": parsed.get("intent", "unknown"),
                     "entities": parsed.get("entities", {}),
+                    "automation": parsed.get("automation", {"action": "none"}),
                     "requires_input": parsed.get("requires_input", False),
                     "suggested_actions": parsed.get("suggested_actions", [])
                 }
@@ -327,6 +351,7 @@ Please respond with a JSON object containing:
                 "text": response,
                 "intent": intent,
                 "entities": {},
+                "automation": {"action": "none"},
                 "requires_input": True,
                 "suggested_actions": []
             }
@@ -337,6 +362,7 @@ Please respond with a JSON object containing:
                 "text": response,
                 "intent": self._detect_basic_intent(original_message),
                 "entities": {},
+                "automation": {"action": "none"},
                 "requires_input": True,
                 "suggested_actions": []
             }

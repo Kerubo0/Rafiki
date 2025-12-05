@@ -139,6 +139,7 @@ class AssistantResponse(BaseModel):
     requires_input: bool = Field(default=False, description="Whether follow-up input is expected")
     suggested_actions: Optional[List[str]] = Field(default_factory=list, description="Suggested next actions")
     context: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Conversation context")
+    automation: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Automation commands for eCitizen")
 
 
 class BookingResponse(BaseModel):

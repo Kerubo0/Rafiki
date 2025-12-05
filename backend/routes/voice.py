@@ -357,3 +357,142 @@ async def update_voice_settings(
         raise HTTPException(status_code=500, detail="Failed to update settings")
     
     return {"success": True, "message": "Voice settings updated"}
+
+
+@router.post(
+    "/chat",
+    response_model=AssistantResponse,
+    summary="Chat with Gemini AI",
+    description="Send a text message to Gemini and get response with automation commands"
+)
+async def chat_with_gemini(
+    request: dict,
+    rate_limit: dict = Depends(check_rate_limit)
+):
+    """
+    Chat endpoint for direct Gemini interaction with automation support.
+    
+    - **message**: User's text message
+    - **language**: Language code ('en' or 'sw')
+    - **session_id**: Optional session identifier
+    """
+    message = request.get("message", "")
+    language = request.get("language", "en")
+    session_id = request.get("session_id")
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    
+    try:
+        # Get or create session
+        session = None
+        if session_id:
+            session = await session_manager.get_session(session_id)
+        if not session:
+            session = await session_manager.create_session()
+        
+        # Process with Gemini
+        gemini_response = await gemini_service.process_message(
+            message,
+            conversation_history=session.conversation_context.get("history", []),
+            context={
+                "booking_state": session.booking_state,
+                "last_intent": session.conversation_context.get("last_intent")
+            },
+            language=language
+        )
+        
+        # Update session history
+        await session_manager.update_session(
+            session.session_id,
+            conversation_context={
+                "context": gemini_response.get("intent", "chat"),
+                "last_intent": gemini_response.get("intent"),
+                "history": session.conversation_context.get("history", [])[-10:] + [
+                    {"role": "user", "content": message},
+                    {"role": "assistant", "content": gemini_response.get("text", "")}
+                ]
+            },
+            booking_state=gemini_response.get("entities", session.booking_state)
+        )
+        
+        return AssistantResponse(
+            text=gemini_response.get("text", "I'm not sure how to help with that."),
+            session_id=session.session_id,
+            intent=gemini_response.get("intent", "unknown"),
+            entities=gemini_response.get("entities", {}),
+            requires_input=gemini_response.get("requires_input", True),
+            suggested_actions=gemini_response.get("suggested_actions", []),
+            automation=gemini_response.get("automation", {"action": "none"}),
+            context={}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in chat: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/analyze-automation",
+    summary="Analyze text for automation",
+    description="Analyze text to extract automation commands without full conversation"
+)
+async def analyze_for_automation(request: dict):
+    """
+    Analyze text for automation commands.
+    Used to extract navigation/autofill commands from ElevenLabs responses.
+    
+    - **text**: Text to analyze (usually AI response)
+    - **language**: Language code
+    """
+    text = request.get("text", "")
+    language = request.get("language", "en")
+    
+    if not text:
+        return {"automation": {"action": "none"}, "entities": {}}
+    
+    try:
+        # Quick analysis prompt
+        analysis_prompt = f"""Analyze this assistant response and extract any automation commands.
+        
+Response to analyze: "{text}"
+
+Return JSON with:
+{{
+    "automation": {{
+        "action": "navigate/autofill/click/none",
+        "target_url": "eCitizen URL if navigating",
+        "form_data": {{}},
+        "element_to_click": null
+    }},
+    "entities": {{
+        "service_type": "passport/national_id/driving_license/good_conduct or null",
+        "user_name": null,
+        "phone_number": null,
+        "id_number": null
+    }}
+}}
+
+eCitizen URLs:
+- Passport: https://accounts.ecitizen.go.ke/en/services/passport
+- National ID: https://accounts.ecitizen.go.ke/en/services/id
+- Driving License: https://accounts.ecitizen.go.ke/en/services/dl
+- Good Conduct: https://accounts.ecitizen.go.ke/en/services/goodconduct"""
+
+        import json
+        response = gemini_service._model.generate_content(analysis_prompt)
+        
+        # Parse JSON from response
+        response_text = response.text
+        json_start = response_text.find('{')
+        json_end = response_text.rfind('}') + 1
+        
+        if json_start >= 0 and json_end > json_start:
+            result = json.loads(response_text[json_start:json_end])
+            return result
+        
+        return {"automation": {"action": "none"}, "entities": {}}
+        
+    except Exception as e:
+        logger.error(f"Error analyzing automation: {e}")
+        return {"automation": {"action": "none"}, "entities": {}}

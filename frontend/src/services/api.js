@@ -138,6 +138,23 @@ const api = {
   getWelcomeMessage: async () => {
     return apiClient.get('/welcome');
   },
+
+  // Chat/Message endpoints for Gemini integration
+  sendMessage: async (message, language = 'en', sessionId = null) => {
+    return apiClient.post('/voice/chat', {
+      message,
+      language,
+      session_id: sessionId,
+    });
+  },
+
+  // Analyze text for automation commands (used with ElevenLabs)
+  analyzeForAutomation: async (text, language = 'en') => {
+    return apiClient.post('/voice/analyze-automation', {
+      text,
+      language,
+    });
+  },
 };
 
 export default api;
