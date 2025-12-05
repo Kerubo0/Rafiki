@@ -330,14 +330,14 @@ async def get_voices():
     description="Update text-to-speech settings"
 )
 async def update_voice_settings(
-    rate: Optional[int] = None,
+    rate: Optional[int] = 160,  # Default to normal conversational speed
     volume: Optional[float] = None,
     voice_id: Optional[int] = None
 ):
     """
     Update TTS settings.
     
-    - **rate**: Speech rate (words per minute, 100-300)
+    - **rate**: Speech rate (words per minute, 100-300, default: 160)
     - **volume**: Volume level (0.0 to 1.0)
     - **voice_id**: Voice index from available voices
     """
