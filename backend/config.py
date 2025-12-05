@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
     
+    # ElevenLabs Conversational AI
+    ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_AGENT_ID: str = "agent_5501kbq22jctfttra52dtmyr25hp"
+    ELEVENLABS_VOICE_ID: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel voice (default)
+    
     # Dialogflow Settings
     DIALOGFLOW_PROJECT_ID: str = ""
     DIALOGFLOW_LANGUAGE_CODE: str = "en"

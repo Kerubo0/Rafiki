@@ -16,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from config import get_settings
 from routes import voice_router, booking_router, services_router, session_router
 from routes.avatar import router as avatar_router
+from routes.elevenlabs import router as elevenlabs_router
 from utils.logger import setup_logging, get_logger
 from utils.session_manager import session_manager
 from utils.rate_limiter import rate_limiter
@@ -23,6 +24,7 @@ from services.gemini_service import gemini_service
 from services.dialogflow_service import dialogflow_service
 from services.voice_service import voice_service
 from services.sms_service import sms_service
+from services.elevenlabs_service import elevenlabs_service
 
 # Setup logging
 setup_logging()
@@ -175,6 +177,7 @@ app.include_router(booking_router)
 app.include_router(services_router)
 app.include_router(session_router)
 app.include_router(avatar_router)
+app.include_router(elevenlabs_router)
 
 
 # Health check endpoint
@@ -193,7 +196,8 @@ async def health_check():
             "gemini": gemini_service._initialized,
             "dialogflow": dialogflow_service._initialized,
             "voice": voice_service._initialized,
-            "sms": sms_service._initialized
+            "sms": sms_service._initialized,
+            "elevenlabs": bool(settings.ELEVENLABS_API_KEY)
         }
     }
 
