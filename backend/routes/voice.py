@@ -184,7 +184,7 @@ async def process_input(
 
 async def _complete_booking(session) -> Optional[dict]:
     """Complete a booking with collected information."""
-    from ..models.schemas import ServiceType, TimeSlot
+    from models.schemas import ServiceType, TimeSlot
     from datetime import date, timedelta
     
     booking_state = session.booking_state

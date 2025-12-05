@@ -6,8 +6,8 @@ import json
 from typing import Dict, Any, Optional, List
 import google.generativeai as genai
 
-from ..config import get_settings, GOVERNMENT_SERVICES, ASSISTANT_RESPONSES
-from ..utils.logger import get_logger
+from config import get_settings, GOVERNMENT_SERVICES, ASSISTANT_RESPONSES
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
