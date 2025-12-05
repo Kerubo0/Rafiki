@@ -1,6 +1,6 @@
 # eCitizen Voice Assistant 🇰🇪
 
-A voice-enabled chatbot system designed to help visually impaired Kenyans access government services through the eCitizen portal. Built with accessibility as a core principle.
+ 
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-green.svg)
@@ -288,4 +288,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Made with ❤️ for accessible government services in Kenya
